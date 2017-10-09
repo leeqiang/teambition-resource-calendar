@@ -1,3 +1,5 @@
+/* global desc:false, task:false, complete:false */
+
 var _ = require('lodash')
 var request = require('superagent')
 
@@ -5,21 +7,24 @@ desc('Delete all test events')
 task('delete', {async: true}, function () {
   request
     .get('https://api.teambition.com/api/projects/579b610c44092feb5ee5e6ef/events')
-    .query({ access_token: process.env.ACCESS_TOKEN })
-    .end((err, res) => {
-      Promise.all(_.map(res.body, (event) => {
-        return request
-          .delete(`https://api.teambition.com/api/events/${event._id}`)
-          .query({ access_token: process.env.ACCESS_TOKEN })
-      })).then(complete)
+    .query({
+      startDate: new Date('2016.08.01'),
+      access_token: process.env.ACCESS_TOKEN
     })
+    .then((res) => Promise.all(_.map(res.body, (event) => {
+      return request
+        .delete(`https://api.teambition.com/api/events/${event._id}`)
+        .query({ access_token: process.env.ACCESS_TOKEN })
+    })))
+    .catch((err) => console.log(err.response.body))
+    .then(complete)
 })
 
 desc('Create test events')
 task('create', function () {
-  start = new Date()
+  let start = new Date()
   start.setHours(8, 0, 0)
-  end = new Date()
+  let end = new Date()
   end.setHours(9, 0, 0)
   request
     .post('https://api.teambition.com/api/events/')
