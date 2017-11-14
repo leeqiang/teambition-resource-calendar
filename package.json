@@ -1,6 +1,6 @@
 {
   "name": "teambition-resource-calendar",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Teambition 插件：资源日历",
   "author": "Aidi Stan <aidistan@live.com>",
   "private": true,
@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "chart.js": "^2.7.0",
-    "fullcalendar-scheduler": "^1.7.1",
+    "fullcalendar-scheduler": "^1.9.0",
     "jquery": "^3.2.1",
     "lodash": "^4.17.4",
     "tb-apps-sdk": "0.0.4",
