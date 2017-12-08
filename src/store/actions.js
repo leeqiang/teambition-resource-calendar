@@ -16,6 +16,7 @@ export function spinner ({ commit }, ifShow) {
 export function loadEventsAndResources ({ commit, state }) {
   let events = []
   let members = {}
+  let memberTeams = {}
   let resources = {}
   let resourceLevels = []
 
@@ -27,7 +28,13 @@ export function loadEventsAndResources ({ commit, state }) {
     commit('STATUS', '【参数错误】未指定企业')
   } else {
     return (state.params.type === 'project' ? loadForProject() : loadForOrganization())
-    .then(() => commit('DATA', prepareData()))
+    .then(() => commit('DATA', {
+      events,
+      members: Vue._.pickBy(members, (m) => m.eventCount > 0),
+      memberTeams,
+      resources: Vue._.pickBy(resources, (r) => r.eventCount > 0),
+      resourceLevels
+    }))
     .catch((err) => commit('STATUS', err.message))
   }
 
@@ -36,7 +43,6 @@ export function loadEventsAndResources ({ commit, state }) {
       url: `/v2/projects/${state.params.id}/members`,
       method: 'GET'
     })
-    .then((res) => res.json())
     .then((tbMembers) => {
       members = Vue._(tbMembers).keyBy('_userId').mapValues((tbMember) => (
         { id: tbMember._userId, title: tbMember.name, eventCount: 0 }
@@ -46,7 +52,6 @@ export function loadEventsAndResources ({ commit, state }) {
       url: `/projects/${state.params.id}/tags`,
       method: 'GET'
     }))
-    .then((res) => res.json())
     .then((tags) => {
       for (let tag of tags) {
         let name = tag.name
@@ -88,7 +93,6 @@ export function loadEventsAndResources ({ commit, state }) {
       url: `/projects/${state.params.id}/events?startDate=${Vue.m().subtract(1, 'year').toISOString()}`,
       method: 'GET'
     }))
-    .then((res) => res.json())
     .then((tbEvents) => {
       if (tbEvents.length === 0) {
         return Promise.reject(new Error('未找到任何日程，请在项目中新建'))
@@ -131,24 +135,26 @@ export function loadEventsAndResources ({ commit, state }) {
       url: `/v2/organizations/${state.params.id}/members`,
       method: 'GET'
     })
-    .then((res) => res.json())
     .then((tbMembers) => {
       members = Vue._(tbMembers).keyBy('_userId').mapValues((tbMember) => (
         { id: tbMember._userId, title: tbMember.name, eventCount: 0 }
       )).value()
     })
     .then(() => Vue.api({
+      url: `/organizations/${state.params.id}/teams`,
+      method: 'GET'
+    }))
+    .then((tbTeams) => { memberTeams = Vue._.keyBy(tbTeams, '_id') })
+    .then(() => Vue.api({
       url: `/organizations/${state.params.id}/projects/public`,
       method: 'GET'
     }))
-    .then((res) => res.json())
-    .then((projects) => {
-      return Promise.all(Vue._.map(projects, (project) => {
+    .then((tbProjects) => {
+      return Promise.all(Vue._.map(tbProjects, (project) => {
         return Vue.api({
           url: `/projects/${project._id}/events?startDate=${Vue.m().subtract(1, 'year').toISOString()}`,
           method: 'GET'
         })
-        .then((res) => res.json())
         .then((tbEvents) => {
           for (let tbEvent of tbEvents) {
             let event = {
@@ -190,39 +196,5 @@ export function loadEventsAndResources ({ commit, state }) {
       eventCount: 0,
       level_0: id
     }, resource)
-  }
-
-  function prepareData () {
-    let data = {
-      events,
-      members: Vue._.pickBy(members, (m) => m.eventCount > 0),
-      resources: Vue._.pickBy(resources, (r) => r.eventCount > 0),
-      resourceLevels
-    }
-
-    // if (params.type === 'organization' && params.id === '50c32afae8cf1439d35a87e6') {
-    //   return filterByResources(['大会议室', '小会议室', '中心区域'])
-    // } else if (params.type === 'project' && params.id === '579b610c44092feb5ee5e6ef') {
-    //   return filterByResources(['场地::小黑屋', '设备::投影仪#ff5722'])
-    // } else {
-    return data
-    // }
-
-    // function filterByResources (resourceTitles) {
-    //   let resources = Vue._.pickBy(data.resources, (r) => resourceTitles.indexOf(r._title) > -1)
-    //   let resourceIds = Vue._.map(resources, 'id')
-    //
-    //   let events = Vue._.map(data.events, (e) => {
-    //     if (e.resourceId) {
-    //       return resourceIds.indexOf(e.resourceId) > -1 ? e : null
-    //     } else {
-    //       e.resourceIds = Vue._.filter(e.resourceIds, (id) => resourceIds.indexOf(id) > -1)
-    //       return e.resourceIds.length > 0 ? e : null
-    //     }
-    //   })
-    //   events = Vue._.filter(events, (e) => e !== null)
-    //
-    //   return { events, resources, resourceLevels: resourceLevels }
-    // }
   }
 }

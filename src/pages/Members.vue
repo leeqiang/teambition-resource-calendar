@@ -1,18 +1,39 @@
 <template lang="pug">
 #members
+  #members-calendar
+  #members-modal.modal.fade
+    .modal-dialog.modal-padding
+      .modal-content
+        .modal-header
+          button.close(type="button", data-dismiss="modal" aria-hidden="true") &times;
+          h4.modal-title 按部门筛选
+        .modal-body
+          member-teams(@select="selectTeam")
 </template>
 
 <script>
+import MemberTeams from '@/components/MemberTeams'
+
 export default {
   name: 'members',
+  data () {
+    return {
+      teamMembers: null
+    }
+  },
   mounted () {
     this.refresh()
     this.$store.watch((state) => state.events, this.refresh)
   },
   methods: {
+    selectTeam (members) {
+      this.teamMembers = members
+      this.refresh()
+      $('#members-modal').modal('hide')
+    },
     refresh () {
-      $('#members').fullCalendar('destroy')
-      $('#members').fullCalendar({
+      $('#members-calendar').fullCalendar('destroy')
+      $('#members-calendar').fullCalendar({
         // Theme options
         themeSystem: 'bootstrap3',
 
@@ -22,7 +43,8 @@ export default {
         header: {
           left: 'prev,next today',
           center: 'title',
-          right: 'timelineDay,timelineWeek,timelineMonth,timelineYear'
+          right: (this.$_.size(this.$store.state.memberTeams) > 1 ? 'selectTeam ' : '') +
+          'timelineDay,timelineWeek,timelineMonth,timelineYear'
         },
         buttonText: { prev: '<', next: '>', today: '今天', year: '年', month: '月', week: '周', day: '日' },
         firstDay: '1',
@@ -88,16 +110,27 @@ export default {
 
         // Resources
         resourceColumns: [{ labelText: '', field: 'title' }],
-        resources: this.$_.values(this.$store.state.members),
+        resources: this.teamMembers
+        ? this.$_.values(this.$store.state.members)
+          .filter((member) => this.$_.includes(this.teamMembers, member.id))
+        : this.$_.values(this.$store.state.members),
+
+        customButtons: {
+          selectTeam: {
+            text: '按部门',
+            click: () => $('#members-modal').modal()
+          }
+        },
 
         // License
         schedulerLicenseKey: 'GPL-My-Project-Is-Open-Source'
       })
 
       if (this.$store.state.params.day) {
-        $('#members').fullresources('gotoDate', $.fullCalendar.moment(this.$store.state.params.day))
+        $('#members-calendar').fullresources('gotoDate', $.fullCalendar.moment(this.$store.state.params.day))
       }
     }
-  }
+  },
+  components: { MemberTeams }
 }
 </script>
